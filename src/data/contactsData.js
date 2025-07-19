@@ -37,7 +37,7 @@ export const initialContacts = [
         time: "14:46",
         unread: 3,
         status: "busy",
-        socialEnergy: -1,
+        socialEnergy: -4,
         messages: [
             {
                 sender: "them",
@@ -58,7 +58,7 @@ export const initialContacts = [
         time: "14:32",
         unread: 0,
         status: "available",
-        socialEnergy: 4,
+        socialEnergy: 5,
         messages: [
             {
                 sender: "them",
@@ -92,7 +92,7 @@ export const initialContacts = [
         time: "11:53",
         unread: 0,
         status: "dnd",
-        socialEnergy: -3,
+        socialEnergy: -5,
         messages: [
             {
                 sender: "them",
@@ -111,7 +111,7 @@ export const initialContacts = [
         time: "22:15",
         unread: 0,
         status: "sleeping",
-        socialEnergy: 5,
+        socialEnergy: 4,
         messages: [
             {
                 sender: "them",
@@ -130,7 +130,7 @@ export const initialContacts = [
         time: "16:30",
         unread: 0,
         status: "offline",
-        socialEnergy: 2,
+        socialEnergy: 1,
         messages: [
             {
                 sender: "them",

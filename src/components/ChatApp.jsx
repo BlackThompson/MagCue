@@ -296,50 +296,43 @@ const ChatApp = () => {
   };
 
   const getEnergyColor = (energy) => {
-    if (energy <= -3) return "text-red-500";
-    if (energy <= -1) return "text-orange-500";
-    if (energy <= 1) return "text-yellow-500";
-    if (energy <= 3) return "text-green-500";
-    return "text-blue-500";
+    if (energy >= 4) return "text-green-500";
+    if (energy >= 2) return "text-blue-500";
+    if (energy >= 0) return "text-yellow-500";
+    if (energy >= -2) return "text-orange-500";
+    return "text-red-500";
   };
 
   const getEnergyBallColor = (energy) => {
-    if (energy <= -3) return "bg-red-500";
-    if (energy <= -1) return "bg-orange-500";
-    if (energy <= 1) return "bg-yellow-500";
-    if (energy <= 3) return "bg-green-500";
-    return "bg-blue-500";
+    if (energy >= 4) return "bg-green-500";
+    if (energy >= 2) return "bg-blue-500";
+    if (energy >= 0) return "bg-yellow-500";
+    if (energy >= -2) return "bg-orange-500";
+    return "bg-red-500";
   };
 
   const getEnergyEmoji = (energy) => {
-    if (energy <= -3) return "😵";
-    if (energy <= -1) return "😪";
-    if (energy <= 1) return "😐";
-    if (energy <= 3) return "😊";
-    return "🤩";
+    if (energy >= 4) return "⚡";
+    if (energy >= 2) return "⚡";
+    if (energy >= 0) return "⚡";
+    if (energy >= -2) return "⚡";
+    return "⚡";
   };
 
   const getEnergyEmojiColor = (energy) => {
-    if (energy <= -3) return "text-red-500";
-    if (energy <= -1) return "text-orange-500";
-    if (energy <= 1) return "text-yellow-500";
-    if (energy <= 3) return "text-green-500";
-    return "text-blue-500";
+    if (energy >= 4) return "text-green-500";
+    if (energy >= 2) return "text-blue-500";
+    if (energy >= 0) return "text-yellow-500";
+    if (energy >= -2) return "text-orange-500";
+    return "text-red-500";
   };
 
   const getEnergyLabel = (energy) => {
-    if (energy === -5) return "Extremely Tired";
-    if (energy === -4) return "Very Tired";
-    if (energy === -3) return "Tired";
-    if (energy === -2) return "A Bit Tired";
-    if (energy === -1) return "Slightly Tired";
-    if (energy === 0) return "Normal";
-    if (energy === 1) return "A Bit Excited";
-    if (energy === 2) return "Excited";
-    if (energy === 3) return "Very Excited";
-    if (energy === 4) return "Extremely Excited";
-    if (energy === 5) return "Off the Charts";
-    return "Normal";
+    if (energy >= 4) return "Very High";
+    if (energy >= 2) return "High";
+    if (energy >= 0) return "Normal";
+    if (energy >= -2) return "Low";
+    return "Very Low";
   };
 
   return (
@@ -416,17 +409,17 @@ const ChatApp = () => {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {getEnergyLabel(socialEnergy)} -{" "}
-                  {socialEnergy === -5 && "Don't want to socialize at all"}
-                  {socialEnergy === -4 && "Need rest"}
-                  {socialEnergy === -3 && "Low energy"}
-                  {socialEnergy === -2 && "Don't want to chat much"}
-                  {socialEnergy === -1 && "Average state"}
-                  {socialEnergy === 0 && "Good state"}
-                  {socialEnergy === 1 && "Good mood"}
-                  {socialEnergy === 2 && "Very energetic"}
-                  {socialEnergy === 3 && "High social energy"}
-                  {socialEnergy === 4 && "Super active"}
-                  {socialEnergy === 5 && "Social energy off the charts"}
+                  {socialEnergy === -5 && "Extremely Tired"}
+                  {socialEnergy === -4 && "Very Tired"}
+                  {socialEnergy === -3 && "Tired"}
+                  {socialEnergy === -2 && "A Bit Tired"}
+                  {socialEnergy === -1 && "Slightly Tired"}
+                  {socialEnergy === 0 && "Normal"}
+                  {socialEnergy === 1 && "A Bit Excited"}
+                  {socialEnergy === 2 && "Excited"}
+                  {socialEnergy === 3 && "Very Excited"}
+                  {socialEnergy === 4 && "Extremely Excited"}
+                  {socialEnergy === 5 && "Off the Charts"}
                 </p>
               </div>
             </motion.div>
