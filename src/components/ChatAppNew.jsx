@@ -8,12 +8,16 @@ import LogPanel from "./log/LogPanel";
 import { initialContacts } from "../data/contactsData";
 import { statusOptions } from "../data/statusOptions";
 
-const ChatAppNew = () => {
-  const [userStatus, setUserStatus] = useState("online");
-  const [socialEnergy, setSocialEnergy] = useState(0);
+const ChatAppNew = ({
+  userStatus,
+  setUserStatus,
+  socialEnergy,
+  setSocialEnergy,
+  showSettings,
+  setShowSettings,
+}) => {
   const [isInCall, setIsInCall] = useState(false);
   const [selectedChat, setSelectedChat] = useState("sarah");
-  const [showSettings, setShowSettings] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [callType, setCallType] = useState("");
   const [callStatus, setCallStatus] = useState("");
