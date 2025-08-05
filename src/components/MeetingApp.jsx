@@ -38,6 +38,13 @@ const MeetingApp = ({
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [showReactions, setShowReactions] = useState(false);
   const [reactions, setReactions] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [distance, setDistance] = useState(100);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [currentResistance, setCurrentResistance] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [activeEmoji, setActiveEmoji] = useState(null);
+  const [emojiOpacity, setEmojiOpacity] = useState(0.3);
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
 
@@ -53,6 +60,18 @@ const MeetingApp = ({
     { emoji: "🤔", name: "Thinking", color: "bg-gray-500" },
   ];
 
+  // 添加日志
+  const addLog = (type, message, details = null) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const newLog = {
+      type,
+      message,
+      details,
+      timestamp,
+    };
+    setLogs((prevLogs) => [newLog, ...prevLogs.slice(0, 9)]);
+  };
+
   // 启动用户摄像头
   useEffect(() => {
     if (isCameraOn && videoRef.current) {
@@ -63,10 +82,47 @@ const MeetingApp = ({
         })
         .catch((err) => {
           console.log("摄像头访问失败:", err);
-          // 如果摄像头不可用，显示默认头像
         });
     }
   }, [isCameraOn]);
+
+  // 监测对话功能
+  useEffect(() => {
+    if (isMonitoring) {
+      const interval = setInterval(() => {
+        const resistance = Math.floor(Math.random() * 5) - 5; // -1 到 -5
+        setCurrentResistance(resistance);
+        addLog(
+          "monitor",
+          `Conversation resistance: ${resistance}`,
+          `Level: ${resistance}`
+        );
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isMonitoring]);
+
+  // 距离变化处理
+  const handleDistanceChange = (newDistance) => {
+    setDistance(newDistance);
+
+    if (isMonitoring) {
+      // 监测模式：检查是否适合插入对话
+      if (newDistance === 0) {
+        setIsSpeaking(true);
+        addLog(
+          "speaking",
+          "Started speaking",
+          `Resistance: ${currentResistance}`
+        );
+      }
+    } else if (activeEmoji) {
+      // Emoji模式：控制透明度
+      const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7; // 0.3 到 1.0
+      setEmojiOpacity(opacity);
+    }
+  };
 
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
@@ -74,37 +130,80 @@ const MeetingApp = ({
 
   const toggleMic = () => {
     setIsMicOn(!isMicOn);
+    if (isSpeaking) {
+      setIsSpeaking(false);
+      addLog("system", "Stopped speaking");
+    }
+    if (!isMicOn) {
+      // 开麦时，bar跳到最右边
+      setDistance(100);
+    }
   };
 
   const toggleAudio = () => {
     setIsAudioOn(!isAudioOn);
   };
 
+  // 切换监测模式
+  const toggleMonitoring = () => {
+    if (activeEmoji) {
+      // 如果当前是emoji模式，先清除
+      setActiveEmoji(null);
+      setEmojiOpacity(0.3);
+      setDistance(100);
+    }
+
+    setIsMonitoring(!isMonitoring);
+    setCurrentResistance(0);
+    setDistance(100);
+
+    if (!isMonitoring) {
+      addLog("system", "Conversation monitoring started");
+    } else {
+      addLog("system", "Conversation monitoring stopped");
+    }
+  };
+
   // 发送emoji回应
   const sendReaction = (reaction) => {
+    if (isMonitoring) {
+      // 如果正在监测，先停止监测
+      setIsMonitoring(false);
+      setCurrentResistance(0);
+      addLog("system", "Monitoring stopped for emoji reaction");
+    }
+
+    // 清除之前的emoji
+    setReactions([]);
+
     const newReaction = {
       id: Date.now(),
       emoji: reaction.emoji,
       name: reaction.name,
       sender: "You",
       timestamp: new Date(),
-      position: "bottom-right", // 指定显示位置
+      position: "bottom-right",
     };
 
-    setReactions((prev) => [...prev, newReaction]);
+    setReactions([newReaction]);
+    setActiveEmoji(newReaction);
+    setEmojiOpacity(0.3);
+    setDistance(100);
     setShowReactions(false);
 
     // 3秒后移除回应
     setTimeout(() => {
-      setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-    }, 3000);
+      setReactions([]);
+      setActiveEmoji(null);
+      setEmojiOpacity(0.3);
+      setDistance(100);
+    }, 5000);
   };
 
   // 模拟其他参与者的回应
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Math.random() < 0.1) {
-        // 10% 概率发送回应
+      if (Math.random() < 0.1 && !activeEmoji) {
         const randomReaction =
           availableReactions[
             Math.floor(Math.random() * availableReactions.length)
@@ -128,15 +227,14 @@ const MeetingApp = ({
 
         setReactions((prev) => [...prev, newReaction]);
 
-        // 3秒后移除回应
         setTimeout(() => {
           setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-        }, 3000);
+        }, 5000);
       }
-    }, 5000); // 每5秒检查一次
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [participants, availableReactions]);
+  }, [participants, availableReactions, activeEmoji]);
 
   // 点击外部区域关闭emoji选择器
   useEffect(() => {
@@ -207,7 +305,7 @@ const MeetingApp = ({
                     .map((reaction) => (
                       <div
                         key={reaction.id}
-                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce"
+                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce transition-opacity duration-200"
                       >
                         <span className="text-lg">{reaction.emoji}</span>
                       </div>
@@ -259,7 +357,7 @@ const MeetingApp = ({
                     .map((reaction) => (
                       <div
                         key={reaction.id}
-                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce"
+                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce transition-opacity duration-200"
                       >
                         <span className="text-lg">{reaction.emoji}</span>
                       </div>
@@ -307,7 +405,7 @@ const MeetingApp = ({
                     .map((reaction) => (
                       <div
                         key={reaction.id}
-                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce"
+                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce transition-opacity duration-200"
                       >
                         <span className="text-lg">{reaction.emoji}</span>
                       </div>
@@ -358,9 +456,15 @@ const MeetingApp = ({
                     .map((reaction) => (
                       <div
                         key={reaction.id}
-                        className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center reaction-bounce"
+                        className="bg-black/70 backdrop-blur-sm rounded-full px-3 py-2 flex items-center justify-center reaction-bounce transition-opacity duration-200"
+                        style={{
+                          opacity:
+                            activeEmoji?.id === reaction.id
+                              ? emojiOpacity
+                              : 0.3,
+                        }}
                       >
-                        <span className="text-lg">{reaction.emoji}</span>
+                        <span className="text-2xl">{reaction.emoji}</span>
                       </div>
                     ))}
                 </div>
@@ -377,8 +481,16 @@ const MeetingApp = ({
                       {isCameraOn && (
                         <span className="text-blue-400 text-xs">📹</span>
                       )}
-                      {isMicOn && (
-                        <span className="text-blue-400 text-xs">🎤</span>
+                      {isMicOn ? (
+                        isSpeaking ? (
+                          <span className="text-green-400 text-xs animate-pulse">
+                            🎤 Speaking
+                          </span>
+                        ) : (
+                          <span className="text-blue-400 text-xs">🎤</span>
+                        )
+                      ) : (
+                        <span className="text-red-400 text-xs">🔇</span>
                       )}
                     </div>
                   </div>
@@ -404,7 +516,9 @@ const MeetingApp = ({
               onClick={toggleMic}
               className={`p-4 rounded-full transition-colors ${
                 isMicOn
-                  ? "bg-gray-700 hover:bg-gray-600"
+                  ? isSpeaking
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-700 hover:bg-gray-600"
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
@@ -429,6 +543,19 @@ const MeetingApp = ({
               }`}
             >
               <span className="text-white text-xl">🔊</span>
+            </button>
+
+            {/* Monitoring button */}
+            <button
+              onClick={toggleMonitoring}
+              className={`p-4 rounded-full transition-colors ${
+                isMonitoring
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-700 hover:bg-gray-600"
+              }`}
+              title="Monitor conversation"
+            >
+              <span className="text-white text-xl">📊</span>
             </button>
 
             {/* Reactions button */}
@@ -465,13 +592,167 @@ const MeetingApp = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* <button className="p-4 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
-              <span className="text-white text-xl">📊</span>
-            </button>
-            <button className="p-4 bg-red-600 hover:bg-red-700 rounded-full transition-colors">
-              <span className="text-white text-xl">📞</span>
-            </button> */}
+      {/* Right sidebar - System Log and Distance Control */}
+      <div className="w-80 bg-gradient-to-b from-gray-800/90 to-blue-900/90 border-l border-gray-700 flex flex-col relative z-50">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700 bg-black/20 backdrop-blur-sm">
+          <h2 className="text-xl font-semibold text-white">System Log</h2>
+          <p className="text-sm text-gray-300 mt-1">Distance Control</p>
+        </div>
+
+        {/* Log content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {logs.map((log, index) => (
+            <div
+              key={index}
+              className="bg-black/50 backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-600"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-400 font-medium">
+                  {log.timestamp}
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    log.type === "monitor"
+                      ? "bg-blue-500/20 text-blue-300"
+                      : log.type === "speaking"
+                      ? "bg-green-500/20 text-green-300"
+                      : log.type === "warning"
+                      ? "bg-red-500/20 text-red-300"
+                      : log.type === "system"
+                      ? "bg-purple-500/20 text-purple-300"
+                      : "bg-gray-500/20 text-gray-300"
+                  }`}
+                >
+                  {log.type.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-sm text-white font-medium">{log.message}</p>
+              {log.details && (
+                <div className="text-xs text-gray-300 mt-1">
+                  {log.details.split(" - ").map((part, i) => {
+                    const numberMatch = part.match(
+                      /(Level|Resistance):\s*([-\d]+)/
+                    );
+                    if (numberMatch) {
+                      const label = numberMatch[1];
+                      const value = parseInt(numberMatch[2]);
+                      const colorClass = "text-red-400 bg-red-500/20";
+                      const sizeClass =
+                        Math.abs(value) >= 4
+                          ? "text-lg font-bold"
+                          : Math.abs(value) >= 2
+                          ? "text-base font-semibold"
+                          : "text-sm font-medium";
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center space-x-2 mt-1"
+                        >
+                          <span>{label}:</span>
+                          <span
+                            className={`px-2 py-1 rounded-md ${colorClass} ${sizeClass}`}
+                          >
+                            {value > 0 ? `+${value}` : value}
+                          </span>
+                          {value !== 0 && (
+                            <span className="text-xs text-gray-400">
+                              (
+                              {value >= -2
+                                ? "Low resistance"
+                                : "High resistance"}
+                              )
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return <span key={i}>{part}</span>;
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Distance control */}
+        <div className="p-6 border-t border-gray-700 bg-black/30 backdrop-blur-sm">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-white mb-2">
+              Distance: {distance}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={distance}
+              onChange={(e) => handleDistanceChange(parseInt(e.target.value))}
+              className="w-full slider"
+            />
+            {isMonitoring && (
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>Ready (0%)</span>
+                <span>Not Ready (100%)</span>
+              </div>
+            )}
+            {activeEmoji && (
+              <div className="flex justify-between text-xs text-blue-400 mt-1">
+                <span>Solid (0%)</span>
+                <span>Transparent (100%)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          <div
+            className={`p-3 rounded-lg border-2 ${
+              isMonitoring
+                ? currentResistance >= -2
+                  ? "bg-green-500/20 border-green-400 text-green-300"
+                  : "bg-red-500/20 border-red-400 text-red-300"
+                : activeEmoji
+                ? "bg-blue-500/20 border-blue-400 text-blue-300"
+                : "bg-gray-500/20 border-gray-400 text-gray-300"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  isMonitoring
+                    ? currentResistance >= -2
+                      ? "bg-green-500"
+                      : "bg-red-500"
+                    : activeEmoji
+                    ? "bg-blue-500"
+                    : "bg-gray-500"
+                }`}
+              ></div>
+              <span className="text-sm font-medium">
+                {isMonitoring
+                  ? currentResistance >= -2
+                    ? "Good to speak"
+                    : "Not suitable (can still speak)"
+                  : activeEmoji
+                  ? "Emoji active"
+                  : "Idle"}
+              </span>
+            </div>
+            {isMonitoring && (
+              <p className="text-sm mt-2">
+                Resistance: {currentResistance}{" "}
+                {currentResistance >= -2 ? "✓" : "⚠️"}
+              </p>
+            )}
+            {activeEmoji && (
+              <p className="text-sm mt-2">
+                Opacity: {Math.round(emojiOpacity * 100)}%
+              </p>
+            )}
           </div>
         </div>
       </div>
