@@ -24,6 +24,7 @@ function App() {
           setSocialEnergy={setSocialEnergy}
           showSettings={showSettings}
           setShowSettings={setShowSettings}
+          onAppSwitch={handleAppSwitch}
         />
       ) : (
         <MeetingApp

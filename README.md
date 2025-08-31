@@ -1,6 +1,23 @@
-# React + Vite
+# MagCue - Social Communication Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern social communication platform built with React and Vite, featuring chat, video calls, and meeting functionality with social energy monitoring and distance-based interaction controls.
+
+## Features
+
+- **Chat Interface**: Real-time messaging with contact management
+- **Video Calls**: Seamless video calling with automatic meeting room transition
+- **Meeting App**: Multi-participant video meetings with reaction system
+- **Social Energy Monitoring**: Track and display social energy levels
+- **Distance Controls**: Interactive sliders for call initiation and meeting participation
+- **Status Management**: User status and availability tracking
+
+## Technology Stack
+
+- React 19
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Lucide React Icons
 
 Currently, two official plugins are available:
 

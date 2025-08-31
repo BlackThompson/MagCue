@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./sidebar/Sidebar";
 import ContactList from "./chat/ContactList";
 import ChatWindow from "./chat/ChatWindow";
@@ -15,6 +15,7 @@ const ChatAppNew = ({
   setSocialEnergy,
   showSettings,
   setShowSettings,
+  onAppSwitch,
 }) => {
   const [isInCall, setIsInCall] = useState(false);
   const [selectedChat, setSelectedChat] = useState("sarah");
@@ -146,6 +147,21 @@ const ChatAppNew = ({
       addLog("system", "Distance slider at 100% - Not ready");
     }
   };
+
+  // 当视频通话连接后，跳转到 MeetingApp
+  useEffect(() => {
+    if (callStatus === "connected" && callType === "video") {
+      if (callTimeout) {
+        clearTimeout(callTimeout);
+        setCallTimeout(null);
+      }
+      setShowCallModal(false);
+      setIsInCall(false);
+      if (onAppSwitch) {
+        onAppSwitch("meeting");
+      }
+    }
+  }, [callStatus, callType, onAppSwitch]);
 
   const selectedContact = contacts.find((c) => c.id === selectedChat);
 
