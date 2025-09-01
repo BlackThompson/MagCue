@@ -1,5 +1,5 @@
 import React from "react";
-import { MessageCircle, Video } from "lucide-react";
+import { MessageCircle, Video, Settings } from "lucide-react";
 
 const AppSwitcher = ({ currentApp, onAppSwitch }) => {
   return (
@@ -25,6 +25,16 @@ const AppSwitcher = ({ currentApp, onAppSwitch }) => {
             }`}
           >
             <Video size={20} />
+          </button>
+          <button
+            onClick={() => onAppSwitch("arduino")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              currentApp === "arduino"
+                ? "bg-green-500 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <Settings size={20} />
           </button>
         </div>
       </div>

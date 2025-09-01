@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ChatAppNew from "./components/ChatAppNew";
 import MeetingApp from "./components/MeetingApp";
+import ArduinoTest from "./components/ArduinoTest";
 import AppSwitcher from "./components/AppSwitcher";
 
 function App() {
@@ -26,7 +27,7 @@ function App() {
           setShowSettings={setShowSettings}
           onAppSwitch={handleAppSwitch}
         />
-      ) : (
+      ) : currentApp === "meeting" ? (
         <MeetingApp
           userStatus={userStatus}
           setUserStatus={setUserStatus}
@@ -35,6 +36,8 @@ function App() {
           showSettings={showSettings}
           setShowSettings={setShowSettings}
         />
+      ) : (
+        <ArduinoTest />
       )}
 
       {/* App switcher */}

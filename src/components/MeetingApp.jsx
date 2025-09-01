@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import Sidebar from "./sidebar/Sidebar";
+import arduinoService from "../utils/arduinoService";
 
 const MeetingApp = ({
   userStatus,
@@ -45,6 +46,8 @@ const MeetingApp = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [activeEmoji, setActiveEmoji] = useState(null);
   const [emojiOpacity, setEmojiOpacity] = useState(0.3);
+  const [arduinoConnected, setArduinoConnected] = useState(false);
+  const [magnetStrength, setMagnetStrength] = useState(0);
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
 
@@ -71,6 +74,78 @@ const MeetingApp = ({
     };
     setLogs((prevLogs) => [newLog, ...prevLogs.slice(0, 9)]);
   };
+
+  // 根据距离计算电磁铁强度 (1-5)
+  const calculateMagnetStrength = (distance) => {
+    if (distance >= 80) return 1; // 距离很远，弱磁力
+    if (distance >= 60) return 2;
+    if (distance >= 40) return 3;
+    if (distance >= 20) return 4;
+    return 5; // 距离很近，强磁力
+  };
+
+  // Arduino集成
+  useEffect(() => {
+    // 连接Arduino服务
+    arduinoService.connect().catch((err) => {
+      console.error("Failed to connect to Arduino:", err);
+    });
+
+    // 监听Arduino连接状态
+    const unsubscribeStatus = arduinoService.onStatus((connected) => {
+      setArduinoConnected(connected);
+      addLog("system", `Arduino ${connected ? "connected" : "disconnected"}`);
+    });
+
+    // 监听距离数据
+    const unsubscribeDistance = arduinoService.onDistance((realDistance) => {
+      setDistance(realDistance);
+
+      // 计算并设置电磁铁强度
+      const newStrength = calculateMagnetStrength(realDistance);
+      if (newStrength !== magnetStrength) {
+        setMagnetStrength(newStrength);
+        arduinoService.setMagnetStrength(newStrength);
+        addLog(
+          "magnet",
+          `Magnet strength: Level ${newStrength}`,
+          `Distance: ${realDistance.toFixed(1)}% - Force: ${newStrength}`
+        );
+      }
+
+      // 处理监测模式下的说话状态
+      if (isMonitoring) {
+        if (realDistance === 0 && !isSpeaking) {
+          setIsSpeaking(true);
+          addLog(
+            "speaking",
+            "Started speaking",
+            `Resistance: ${currentResistance}`
+          );
+        } else if (realDistance > 0 && isSpeaking) {
+          setIsSpeaking(false);
+          addLog("speaking", "Stopped speaking");
+        }
+      }
+
+      // 处理emoji模式下的透明度
+      if (activeEmoji) {
+        const opacity = 0.3 + ((100 - realDistance) / 100) * 0.7;
+        setEmojiOpacity(opacity);
+      }
+    });
+
+    return () => {
+      unsubscribeStatus();
+      unsubscribeDistance();
+    };
+  }, [
+    magnetStrength,
+    isMonitoring,
+    isSpeaking,
+    activeEmoji,
+    currentResistance,
+  ]);
 
   // 启动用户摄像头
   useEffect(() => {
@@ -105,22 +180,36 @@ const MeetingApp = ({
 
   // 距离变化处理
   const handleDistanceChange = (newDistance) => {
-    setDistance(newDistance);
+    // 只有在Arduino未连接时才允许手动控制
+    if (!arduinoConnected) {
+      setDistance(newDistance);
 
-    if (isMonitoring) {
-      // 监测模式：检查是否适合插入对话
-      if (newDistance === 0) {
-        setIsSpeaking(true);
+      // 计算并设置电磁铁强度
+      const newStrength = calculateMagnetStrength(newDistance);
+      if (newStrength !== magnetStrength) {
+        setMagnetStrength(newStrength);
         addLog(
-          "speaking",
-          "Started speaking",
-          `Resistance: ${currentResistance}`
+          "magnet",
+          `Manual magnet strength: Level ${newStrength}`,
+          `Distance: ${newDistance}% - Force: ${newStrength}`
         );
       }
-    } else if (activeEmoji) {
-      // Emoji模式：控制透明度
-      const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7; // 0.3 到 1.0
-      setEmojiOpacity(opacity);
+
+      if (isMonitoring) {
+        // 监测模式：检查是否适合插入对话
+        if (newDistance === 0) {
+          setIsSpeaking(true);
+          addLog(
+            "speaking",
+            "Started speaking",
+            `Resistance: ${currentResistance}`
+          );
+        }
+      } else if (activeEmoji) {
+        // Emoji模式：控制透明度
+        const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7; // 0.3 到 1.0
+        setEmojiOpacity(opacity);
+      }
     }
   };
 
@@ -601,7 +690,64 @@ const MeetingApp = ({
         {/* Header */}
         <div className="p-6 border-b border-gray-700 bg-black/20 backdrop-blur-sm">
           <h2 className="text-xl font-semibold text-white">System Log</h2>
-          <p className="text-sm text-gray-300 mt-1">Distance Control</p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-sm text-gray-300">Distance Control</p>
+            <div className="flex items-center space-x-2">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  arduinoConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
+                }`}
+              ></div>
+              <span className="text-xs text-gray-400">
+                {arduinoConnected ? "Arduino" : "Manual"}
+              </span>
+            </div>
+          </div>
+
+          {/* Arduino连接状态 */}
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    arduinoConnected
+                      ? "bg-green-400 animate-pulse"
+                      : "bg-red-400"
+                  }`}
+                ></div>
+                <span className="text-xs text-gray-300">
+                  {arduinoConnected ? "Arduino Connected" : "Manual Mode"}
+                </span>
+              </div>
+              {arduinoConnected && (
+                <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded">
+                  LIVE
+                </span>
+              )}
+            </div>
+
+            {/* 磁力强度显示 */}
+            {magnetStrength > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-gray-400">Magnet:</span>
+                <div className="flex space-x-1">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <div
+                      key={level}
+                      className={`w-2 h-2 rounded-full ${
+                        level <= magnetStrength
+                          ? "bg-yellow-400"
+                          : "bg-gray-600"
+                      }`}
+                    ></div>
+                  ))}
+                </div>
+                <span className="text-xs font-medium text-yellow-400">
+                  Level {magnetStrength}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Log content */}
@@ -624,11 +770,19 @@ const MeetingApp = ({
                       : log.type === "warning"
                       ? "bg-red-500/20 text-red-300"
                       : log.type === "system"
-                      ? "bg-purple-500/20 text-purple-300"
+                      ? log.message.includes("Arduino connected")
+                        ? "bg-green-500/20 text-green-300"
+                        : log.message.includes("Arduino disconnected")
+                        ? "bg-red-500/20 text-red-300"
+                        : "bg-purple-500/20 text-purple-300"
+                      : log.type === "magnet"
+                      ? "bg-yellow-500/20 text-yellow-300"
                       : "bg-gray-500/20 text-gray-300"
                   }`}
                 >
-                  {log.type.toUpperCase()}
+                  {log.type === "system" && log.message.includes("Arduino")
+                    ? "ARDUINO"
+                    : log.type.toUpperCase()}
                 </span>
               </div>
               <p className="text-sm text-white font-medium">{log.message}</p>
@@ -636,18 +790,29 @@ const MeetingApp = ({
                 <div className="text-xs text-gray-300 mt-1">
                   {log.details.split(" - ").map((part, i) => {
                     const numberMatch = part.match(
-                      /(Level|Resistance):\s*([-\d]+)/
+                      /(Level|Resistance|Force):\s*([-\d]+)/
                     );
                     if (numberMatch) {
                       const label = numberMatch[1];
                       const value = parseInt(numberMatch[2]);
-                      const colorClass = "text-red-400 bg-red-500/20";
-                      const sizeClass =
-                        Math.abs(value) >= 4
-                          ? "text-lg font-bold"
-                          : Math.abs(value) >= 2
-                          ? "text-base font-semibold"
-                          : "text-sm font-medium";
+
+                      // 为不同类型使用不同颜色
+                      let colorClass, sizeClass;
+                      if (label === "Force") {
+                        colorClass = "text-yellow-300 bg-yellow-500/20";
+                        sizeClass = "text-base font-semibold";
+                      } else if (label === "Resistance") {
+                        colorClass = "text-red-400 bg-red-500/20";
+                        sizeClass =
+                          Math.abs(value) >= 4
+                            ? "text-lg font-bold"
+                            : Math.abs(value) >= 2
+                            ? "text-base font-semibold"
+                            : "text-sm font-medium";
+                      } else {
+                        colorClass = "text-blue-400 bg-blue-500/20";
+                        sizeClass = "text-sm font-medium";
+                      }
 
                       return (
                         <div
@@ -658,9 +823,18 @@ const MeetingApp = ({
                           <span
                             className={`px-2 py-1 rounded-md ${colorClass} ${sizeClass}`}
                           >
-                            {value > 0 ? `+${value}` : value}
+                            {label === "Force"
+                              ? `Level ${value}`
+                              : value > 0
+                              ? `+${value}`
+                              : value}
                           </span>
-                          {value !== 0 && (
+                          {label === "Force" && (
+                            <span className="text-xs text-yellow-400">
+                              (Magnet Strength)
+                            </span>
+                          )}
+                          {label === "Resistance" && value !== 0 && (
                             <span className="text-xs text-gray-400">
                               (
                               {value >= -2
@@ -683,9 +857,38 @@ const MeetingApp = ({
         {/* Distance control */}
         <div className="p-6 border-t border-gray-700 bg-black/30 backdrop-blur-sm">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-white mb-2">
-              Distance: {distance}%
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">
+                Distance: {distance.toFixed(1)}%
+              </label>
+              <div className="flex items-center space-x-2">
+                {arduinoConnected && (
+                  <span className="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded">
+                    Arduino
+                  </span>
+                )}
+                {magnetStrength > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <span className="text-xs text-yellow-400">Magnet:</span>
+                    <div className="flex space-x-1">
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <div
+                          key={level}
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            level <= magnetStrength
+                              ? "bg-yellow-400"
+                              : "bg-gray-600"
+                          }`}
+                        ></div>
+                      ))}
+                    </div>
+                    <span className="text-xs text-yellow-400">
+                      L{magnetStrength}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
             <input
               type="range"
               min="0"
@@ -693,6 +896,7 @@ const MeetingApp = ({
               value={distance}
               onChange={(e) => handleDistanceChange(parseInt(e.target.value))}
               className="w-full slider"
+              disabled={arduinoConnected}
             />
             {isMonitoring && (
               <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -705,6 +909,11 @@ const MeetingApp = ({
                 <span>Solid (0%)</span>
                 <span>Transparent (100%)</span>
               </div>
+            )}
+            {arduinoConnected && (
+              <p className="text-xs text-green-400 mt-1">
+                🤖 Controlled by Arduino sensor
+              </p>
             )}
           </div>
 

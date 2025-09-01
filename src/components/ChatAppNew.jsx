@@ -7,6 +7,7 @@ import MoodModal from "./modals/MoodModal";
 import LogPanel from "./log/LogPanel";
 import { initialContacts } from "../data/contactsData";
 import { statusOptions } from "../data/statusOptions";
+import arduinoService from "../utils/arduinoService";
 
 const ChatAppNew = ({
   userStatus,
@@ -27,6 +28,8 @@ const ChatAppNew = ({
   const [logs, setLogs] = useState([]);
   const [distance, setDistance] = useState(100);
   const [callTimeout, setCallTimeout] = useState(null);
+  const [arduinoConnected, setArduinoConnected] = useState(false);
+  const [magnetStrength, setMagnetStrength] = useState(0);
 
   const addLog = (type, message, details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -51,6 +54,72 @@ const ChatAppNew = ({
     if (energy >= -2) return "Low";
     return "Very Low";
   };
+
+  // 根据距离计算电磁铁强度 (1-5)
+  const calculateMagnetStrength = (distance) => {
+    if (distance >= 80) return 1; // 距离很远，弱磁力
+    if (distance >= 60) return 2;
+    if (distance >= 40) return 3;
+    if (distance >= 20) return 4;
+    return 5; // 距离很近，强磁力
+  };
+
+  // Arduino集成
+  useEffect(() => {
+    console.log("🚀 ChatAppNew: Initializing Arduino connection...");
+
+    // 连接Arduino服务
+    arduinoService
+      .connect()
+      .then(() => {
+        console.log("✅ ChatAppNew: Arduino service connected successfully");
+        addLog("system", "Backend connection established");
+      })
+      .catch((err) => {
+        console.error(
+          "❌ ChatAppNew: Failed to connect to Arduino service:",
+          err
+        );
+        addLog("system", `Backend connection failed: ${err.message}`);
+      });
+
+    // 监听Arduino连接状态
+    const unsubscribeStatus = arduinoService.onStatus((connected) => {
+      console.log("🤖 ChatAppNew: Arduino status changed:", connected);
+      setArduinoConnected(connected);
+      addLog("system", `Arduino ${connected ? "connected" : "disconnected"}`);
+    });
+
+    // 监听距离数据
+    const unsubscribeDistance = arduinoService.onDistance((realDistance) => {
+      setDistance(realDistance);
+
+      // 计算并设置电磁铁强度
+      const newStrength = calculateMagnetStrength(realDistance);
+      if (newStrength !== magnetStrength) {
+        setMagnetStrength(newStrength);
+        arduinoService.setMagnetStrength(newStrength);
+        addLog(
+          "magnet",
+          `Magnet strength: Level ${newStrength}`,
+          `Distance: ${realDistance.toFixed(1)}% - Force: ${newStrength}`
+        );
+      }
+
+      // 记录距离变化（每5%变化记录一次）
+      const roundedDistance = Math.round(realDistance / 5) * 5;
+      if (roundedDistance === 0) {
+        addLog("system", "Distance at 0% - Ready for action");
+      } else if (roundedDistance === 100) {
+        addLog("system", "Distance at 100% - Maximum distance");
+      }
+    });
+
+    return () => {
+      unsubscribeStatus();
+      unsubscribeDistance();
+    };
+  }, [magnetStrength]);
 
   const handleChatSelect = (contactId) => {
     setSelectedChat(contactId);
@@ -121,30 +190,40 @@ const ChatAppNew = ({
   };
 
   const handleDistanceChange = (newDistance) => {
-    setDistance(newDistance);
+    // 保留手动距离控制作为备用（当Arduino未连接时）
+    if (!arduinoConnected) {
+      setDistance(newDistance);
 
-    // 如果正在通话且拉到0%，开始通话
-    if (isInCall && callStatus === "waiting" && newDistance === 0) {
-      if (callTimeout) {
-        clearTimeout(callTimeout);
-        setCallTimeout(null);
+      // 计算并设置电磁铁强度
+      const newStrength = calculateMagnetStrength(newDistance);
+      if (newStrength !== magnetStrength) {
+        setMagnetStrength(newStrength);
+        addLog(
+          "magnet",
+          `Manual magnet strength: Level ${newStrength}`,
+          `Distance: ${newDistance}% - Force: ${newStrength}`
+        );
       }
 
-      setCallStatus("dialing");
-      // 不记录通话开始日志
+      // 如果正在通话且拉到0%，开始通话
+      if (isInCall && callStatus === "waiting" && newDistance === 0) {
+        if (callTimeout) {
+          clearTimeout(callTimeout);
+          setCallTimeout(null);
+        }
 
-      // 开始通话流程，但不自动结束
-      setTimeout(() => {
-        setCallStatus("connected");
-        // 不记录通话连接日志
-      }, 2000);
-    }
+        setCallStatus("dialing");
+        setTimeout(() => {
+          setCallStatus("connected");
+        }, 2000);
+      }
 
-    // 记录距离状态变化
-    if (newDistance === 0) {
-      addLog("system", "Distance slider at 0% - Ready");
-    } else if (newDistance === 100) {
-      addLog("system", "Distance slider at 100% - Not ready");
+      // 记录距离状态变化
+      if (newDistance === 0) {
+        addLog("system", "Manual distance at 0% - Ready");
+      } else if (newDistance === 100) {
+        addLog("system", "Manual distance at 100% - Not ready");
+      }
     }
   };
 
@@ -199,6 +278,8 @@ const ChatAppNew = ({
         onDistanceChange={handleDistanceChange}
         isInCall={isInCall}
         callStatus={callStatus}
+        arduinoConnected={arduinoConnected}
+        magnetStrength={magnetStrength}
       />
 
       {/* Call modal */}
