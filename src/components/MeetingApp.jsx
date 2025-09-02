@@ -50,6 +50,8 @@ const MeetingApp = ({
   const [arduinoConnected, setArduinoConnected] = useState(false);
   const [magnetStrength, setMagnetStrength] = useState(0);
   const [showLogPanel, setShowLogPanel] = useState(false); // 控制日志面板显示/隐藏
+  const [monitoringStartTime, setMonitoringStartTime] = useState(null); // 监测开始时间
+  const [canSpeak, setCanSpeak] = useState(false); // 是否适合发言
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
 
@@ -103,37 +105,54 @@ const MeetingApp = ({
     const unsubscribeDistance = arduinoService.onDistance((realDistance) => {
       setDistance(realDistance);
 
-      // 计算并设置电磁铁强度
-      const newStrength = calculateMagnetStrength(realDistance);
-      if (newStrength !== magnetStrength) {
-        setMagnetStrength(newStrength);
-        arduinoService.setMagnetStrength(newStrength);
-        addLog(
-          "magnet",
-          `Magnet strength: Level ${newStrength}`,
-          `Distance: ${realDistance.toFixed(1)}% - Force: ${newStrength}`
-        );
-      }
-
-      // 处理监测模式下的说话状态
-      if (isMonitoring) {
-        if (realDistance === 0 && !isSpeaking) {
-          setIsSpeaking(true);
-          addLog(
-            "speaking",
-            "Started speaking",
-            `Resistance: ${currentResistance}`
-          );
-        } else if (realDistance > 0 && isSpeaking) {
-          setIsSpeaking(false);
-          addLog("speaking", "Stopped speaking");
+      // 只在特定模式下才控制磁力
+      if (isMonitoring || activeEmoji) {
+        // emoji模式时使用固定Level 5磁力
+        if (activeEmoji) {
+          if (magnetStrength !== 5) {
+            setMagnetStrength(5);
+            arduinoService.setMagnetStrength(5);
+            addLog(
+              "magnet",
+              "Emoji mode: Level 5",
+              "Fixed magnet strength for emoji"
+            );
+          }
+          // 处理emoji透明度
+          const opacity = 0.3 + ((100 - realDistance) / 100) * 0.7;
+          setEmojiOpacity(opacity);
+        }
+        // 监测模式时不改变磁力，只处理麦克风状态
+      } else {
+        // 平时关闭磁力
+        if (magnetStrength > 0) {
+          setMagnetStrength(0);
+          arduinoService.setMagnetStrength(0);
+          addLog("magnet", "Magnet turned off", "Meeting idle mode");
         }
       }
 
-      // 处理emoji模式下的透明度
-      if (activeEmoji) {
-        const opacity = 0.3 + ((100 - realDistance) / 100) * 0.7;
-        setEmojiOpacity(opacity);
+      // 处理监测模式下的麦克风控制
+      if (isMonitoring && canSpeak) {
+        if (realDistance <= 1 && !isSpeaking) {
+          // 按下到0% - 开启麦克风
+          setIsSpeaking(true);
+          setIsMicOn(true);
+          addLog(
+            "speaking",
+            "Unmuted - Started speaking",
+            "Distance: 0% - Mic ON"
+          );
+        } else if (realDistance > 1 && isSpeaking) {
+          // 松开手 - 关闭麦克风
+          setIsSpeaking(false);
+          setIsMicOn(false);
+          addLog(
+            "speaking",
+            "Muted - Stopped speaking",
+            "Distance: >0% - Mic OFF"
+          );
+        }
       }
     });
 
@@ -163,22 +182,41 @@ const MeetingApp = ({
     }
   }, [isCameraOn]);
 
-  // 监测对话功能
+  // 监测对话功能 - 新的10秒切换逻辑
   useEffect(() => {
-    if (isMonitoring) {
-      const interval = setInterval(() => {
-        const resistance = Math.floor(Math.random() * 5) - 5; // -1 到 -5
-        setCurrentResistance(resistance);
-        addLog(
-          "monitor",
-          `Conversation resistance: ${resistance}`,
-          `Level: ${resistance}`
-        );
-      }, 5000);
+    if (isMonitoring && monitoringStartTime) {
+      // 设置初始磁力Level 5
+      setMagnetStrength(5);
+      arduinoService.setMagnetStrength(5);
+      setCanSpeak(false);
+      addLog(
+        "monitor",
+        "Monitoring started - Not suitable to speak",
+        "Force: 5 (Strong)"
+      );
 
-      return () => clearInterval(interval);
+      // 10秒后切换到Level 3
+      const switchTimer = setTimeout(() => {
+        setMagnetStrength(3);
+        arduinoService.setMagnetStrength(3);
+        setCanSpeak(true);
+        addLog("monitor", "Good to speak", "Force: 3 (Medium)");
+      }, 10000);
+
+      return () => {
+        clearTimeout(switchTimer);
+      };
+    } else if (!isMonitoring) {
+      // 停止监测时关闭磁力
+      if (magnetStrength > 0) {
+        setMagnetStrength(0);
+        arduinoService.setMagnetStrength(0);
+        addLog("magnet", "Monitoring stopped", "Magnet turned off");
+      }
+      setCanSpeak(false);
+      setMonitoringStartTime(null);
     }
-  }, [isMonitoring]);
+  }, [isMonitoring, monitoringStartTime]);
 
   // 距离变化处理
   const handleDistanceChange = (newDistance) => {
@@ -186,31 +224,49 @@ const MeetingApp = ({
     if (!arduinoConnected) {
       setDistance(newDistance);
 
-      // 计算并设置电磁铁强度
-      const newStrength = calculateMagnetStrength(newDistance);
-      if (newStrength !== magnetStrength) {
-        setMagnetStrength(newStrength);
-        addLog(
-          "magnet",
-          `Manual magnet strength: Level ${newStrength}`,
-          `Distance: ${newDistance}% - Force: ${newStrength}`
-        );
-      }
-
-      if (isMonitoring) {
-        // 监测模式：检查是否适合插入对话
-        if (newDistance === 0) {
-          setIsSpeaking(true);
-          addLog(
-            "speaking",
-            "Started speaking",
-            `Resistance: ${currentResistance}`
-          );
+      // 只在特定模式下才控制磁力
+      if (isMonitoring || activeEmoji) {
+        // emoji模式时使用固定Level 5磁力
+        if (activeEmoji) {
+          if (magnetStrength !== 5) {
+            setMagnetStrength(5);
+            addLog(
+              "magnet",
+              "Emoji mode: Level 5",
+              "Fixed magnet strength for emoji"
+            );
+          }
+          // 处理emoji透明度
+          const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7;
+          setEmojiOpacity(opacity);
         }
-      } else if (activeEmoji) {
-        // Emoji模式：控制透明度
-        const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7; // 0.3 到 1.0
-        setEmojiOpacity(opacity);
+        // 监测模式时不改变磁力，只处理麦克风
+        else if (isMonitoring && canSpeak) {
+          // 监测模式下的麦克风控制
+          if (newDistance <= 1 && !isSpeaking) {
+            setIsSpeaking(true);
+            setIsMicOn(true);
+            addLog(
+              "speaking",
+              "Manual unmute - Started speaking",
+              "Distance: 0% - Mic ON"
+            );
+          } else if (newDistance > 1 && isSpeaking) {
+            setIsSpeaking(false);
+            setIsMicOn(false);
+            addLog(
+              "speaking",
+              "Manual mute - Stopped speaking",
+              "Distance: >0% - Mic OFF"
+            );
+          }
+        }
+      } else {
+        // 平时关闭磁力
+        if (magnetStrength > 0) {
+          setMagnetStrength(0);
+          addLog("magnet", "Magnet turned off", "Manual control - idle");
+        }
       }
     }
   };
@@ -220,6 +276,16 @@ const MeetingApp = ({
   };
 
   const toggleMic = () => {
+    // 监测模式下禁用手动麦克风控制
+    if (isMonitoring) {
+      addLog(
+        "system",
+        "Mic control disabled during monitoring",
+        "Use distance sensor to unmute"
+      );
+      return;
+    }
+
     setIsMicOn(!isMicOn);
     if (isSpeaking) {
       setIsSpeaking(false);
@@ -244,13 +310,20 @@ const MeetingApp = ({
       setDistance(100);
     }
 
-    setIsMonitoring(!isMonitoring);
-    setCurrentResistance(0);
-    setDistance(100);
-
     if (!isMonitoring) {
-      addLog("system", "Conversation monitoring started");
+      // 开始监测
+      setIsMonitoring(true);
+      setMonitoringStartTime(Date.now());
+      setCurrentResistance(0);
+      setDistance(100);
+      setIsSpeaking(false);
+      setIsMicOn(false); // 初始状态为静音
+      addLog("system", "Conversation monitoring started", "10s timer begins");
     } else {
+      // 停止监测
+      setIsMonitoring(false);
+      setIsSpeaking(false);
+      setIsMicOn(true); // 恢复麦克风状态
       addLog("system", "Conversation monitoring stopped");
     }
   };
@@ -282,12 +355,25 @@ const MeetingApp = ({
     setDistance(100);
     setShowReactions(false);
 
-    // 3秒后移除回应
+    // 设置emoji模式的固定Level 5磁力
+    setMagnetStrength(5);
+    arduinoService.setMagnetStrength(5);
+    addLog(
+      "magnet",
+      "Emoji reaction started",
+      `Emoji: ${reaction.emoji} - Force: 5`
+    );
+
+    // 5秒后移除回应和关闭磁力
     setTimeout(() => {
       setReactions([]);
       setActiveEmoji(null);
       setEmojiOpacity(0.3);
       setDistance(100);
+      // 关闭磁力
+      setMagnetStrength(0);
+      arduinoService.setMagnetStrength(0);
+      addLog("magnet", "Emoji reaction ended", "Magnet turned off");
     }, 5000);
   };
 
@@ -605,15 +691,43 @@ const MeetingApp = ({
           <div className="flex items-center justify-center space-x-6">
             <button
               onClick={toggleMic}
-              className={`p-4 rounded-full transition-colors ${
-                isMicOn
+              className={`p-4 rounded-full transition-colors relative ${
+                isMonitoring
                   ? isSpeaking
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gray-700 hover:bg-gray-600"
-                  : "bg-red-600 hover:bg-red-700"
+                    ? "bg-green-500 hover:bg-green-600" // 监测模式说话时绿色
+                    : "bg-gray-500 cursor-not-allowed" // 监测模式未说话时灰色
+                  : isMicOn
+                  ? isSpeaking
+                    ? "bg-green-500 hover:bg-green-600" // 正常模式说话时绿色
+                    : "bg-gray-600 hover:bg-gray-500" // 正常模式开麦但未说话时灰色
+                  : "bg-red-600 hover:bg-red-700" // 静音时红色
               }`}
+              title={
+                isMonitoring
+                  ? "Mic controlled by distance sensor"
+                  : "Toggle microphone"
+              }
             >
-              <span className="text-white text-xl">🎤</span>
+              <span
+                className={`text-xl transition-colors ${
+                  isSpeaking ? "text-white" : "text-white"
+                }`}
+              >
+                🎤
+              </span>
+
+              {/* 说话时的脉动效果 */}
+              {isSpeaking && (
+                <div className="absolute inset-0 rounded-full bg-green-400/20 animate-ping"></div>
+              )}
+
+              {/* 监测模式状态指示器 */}
+              {isMonitoring && !canSpeak && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+              )}
+              {isMonitoring && canSpeak && !isSpeaking && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              )}
             </button>
             <button
               onClick={toggleCamera}
@@ -639,7 +753,7 @@ const MeetingApp = ({
             {/* Monitoring button */}
             <button
               onClick={toggleMonitoring}
-              className={`p-4 rounded-full transition-colors ${
+              className={`p-4 rounded-full transition-colors relative ${
                 isMonitoring
                   ? "bg-blue-600 hover:bg-blue-700"
                   : "bg-gray-700 hover:bg-gray-600"
@@ -647,6 +761,9 @@ const MeetingApp = ({
               title="Monitor conversation"
             >
               <span className="text-white text-xl">📊</span>
+              {isMonitoring && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              )}
             </button>
 
             {/* Reactions button */}
@@ -940,7 +1057,7 @@ const MeetingApp = ({
           <div
             className={`p-3 rounded-lg border-2 ${
               isMonitoring
-                ? currentResistance >= -2
+                ? canSpeak
                   ? "bg-green-500/20 border-green-400 text-green-300"
                   : "bg-red-500/20 border-red-400 text-red-300"
                 : activeEmoji
@@ -952,8 +1069,8 @@ const MeetingApp = ({
               <div
                 className={`w-3 h-3 rounded-full ${
                   isMonitoring
-                    ? currentResistance >= -2
-                      ? "bg-green-500"
+                    ? canSpeak
+                      ? "bg-green-500 animate-pulse"
                       : "bg-red-500"
                     : activeEmoji
                     ? "bg-blue-500"
@@ -962,11 +1079,11 @@ const MeetingApp = ({
               ></div>
               <span className="text-sm font-medium">
                 {isMonitoring
-                  ? currentResistance >= -2
-                    ? "Good to speak"
-                    : "Not suitable (can still speak)"
+                  ? canSpeak
+                    ? "Good to speak (Level 3)"
+                    : "Not suitable to speak (Level 5)"
                   : activeEmoji
-                  ? "Emoji active"
+                  ? "Emoji active (Level 5)"
                   : "Idle"}
               </span>
             </div>
