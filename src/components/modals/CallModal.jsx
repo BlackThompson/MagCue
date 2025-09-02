@@ -12,15 +12,7 @@ const CallModal = ({
   contactName,
   isConnected = false,
 }) => {
-  useEffect(() => {
-    if (isOpen && callStatus === "dialing" && isConnected) {
-      const timer = setTimeout(() => {
-        // Simulate call status changes
-        // In a real app, this would be handled by actual call events
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, callStatus, isConnected]);
+  // 移除干扰的useEffect - 通话状态由ChatAppNew控制
 
   if (!isOpen) return null;
 

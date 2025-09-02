@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./sidebar/Sidebar";
 import ContactList from "./chat/ContactList";
 import ChatWindow from "./chat/ChatWindow";
@@ -30,6 +30,7 @@ const ChatAppNew = ({
   const [callTimeout, setCallTimeout] = useState(null);
   const [arduinoConnected, setArduinoConnected] = useState(false);
   const [magnetStrength, setMagnetStrength] = useState(0);
+  const callTriggeredRef = useRef(false); // 使用ref立即标记，避免状态更新延迟
 
   const addLog = (type, message, details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -85,15 +86,45 @@ const ChatAppNew = ({
     const unsubscribeDistance = arduinoService.onDistance((realDistance) => {
       setDistance(realDistance);
 
-      // 如果正在通话且Arduino距离到达0%，开始通话
-      if (isInCall && callStatus === "waiting" && realDistance === 0) {
+      // 调试信息：监控所有状态
+      if (isInCall) {
+        console.log(
+          "📊 Call State - isInCall:",
+          isInCall,
+          "callStatus:",
+          callStatus,
+          "distance:",
+          realDistance
+        );
+      }
+
+      // 只有在等待状态下且未触发过才能触发通话
+      if (
+        isInCall &&
+        callStatus === "waiting" &&
+        realDistance <= 1 &&
+        !callTriggeredRef.current
+      ) {
+        console.log(
+          "🎯 Triggering call - Status:",
+          callStatus,
+          "Distance:",
+          realDistance
+        );
+
+        // 立即标记已触发，防止重复
+        callTriggeredRef.current = true;
+
         if (callTimeout) {
           clearTimeout(callTimeout);
           setCallTimeout(null);
         }
 
         setCallStatus("dialing");
+        addLog("system", "Call triggered by distance sensor");
+
         setTimeout(() => {
+          console.log("📞 Setting call status to connected");
           setCallStatus("connected");
         }, 2000);
       }
@@ -149,18 +180,23 @@ const ChatAppNew = ({
     setShowCallModal(true);
     setIsInCall(true);
     setDistance(100); // 重置距离
+    callTriggeredRef.current = false; // 重置触发标记
 
     // 5秒超时自动退出
     const timeout = setTimeout(() => {
-      if (distance > 0) {
-        setCallStatus("timeout");
-        setIsInCall(false);
-        setShowCallModal(false);
-        // 超时时关闭磁力
-        setMagnetStrength(0);
-        arduinoService.setMagnetStrength(0);
-        addLog("magnet", "Magnet turned off", "Call timeout");
-      }
+      // 只有在还是等待状态时才执行超时逻辑
+      setCallStatus((currentStatus) => {
+        if (currentStatus === "waiting") {
+          setIsInCall(false);
+          setShowCallModal(false);
+          // 超时时关闭磁力
+          setMagnetStrength(0);
+          arduinoService.setMagnetStrength(0);
+          addLog("magnet", "Magnet turned off", "Call timeout");
+          return "timeout";
+        }
+        return currentStatus; // 如果不是waiting状态，保持当前状态
+      });
     }, 5000);
 
     setCallTimeout(timeout);
@@ -174,6 +210,7 @@ const ChatAppNew = ({
     setShowCallModal(false);
     setCallStatus("");
     setIsInCall(false);
+    callTriggeredRef.current = false; // 重置触发标记
 
     // 通话结束时关闭磁力
     if (magnetStrength > 0) {
@@ -226,15 +263,33 @@ const ChatAppNew = ({
     if (!arduinoConnected) {
       setDistance(newDistance);
 
-      // 如果正在通话且拉到0%，开始通话（语音通话和视频通话都一样处理）
-      if (isInCall && callStatus === "waiting" && newDistance === 0) {
+      // 只有在等待状态下才能触发通话
+      if (
+        isInCall &&
+        callStatus === "waiting" &&
+        newDistance <= 1 &&
+        !callTriggeredRef.current
+      ) {
+        console.log(
+          "🎯 Manual trigger - Status:",
+          callStatus,
+          "Distance:",
+          newDistance
+        );
+
+        // 立即标记已触发，防止重复
+        callTriggeredRef.current = true;
+
         if (callTimeout) {
           clearTimeout(callTimeout);
           setCallTimeout(null);
         }
 
         setCallStatus("dialing");
+        addLog("system", "Call triggered by manual slider");
+
         setTimeout(() => {
+          console.log("📞 Setting call status to connected (manual)");
           setCallStatus("connected");
         }, 2000);
       }
