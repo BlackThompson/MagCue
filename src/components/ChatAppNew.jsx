@@ -32,6 +32,7 @@ const ChatAppNew = ({
   const [magnetStrength, setMagnetStrength] = useState(0);
   const [showLogPanel, setShowLogPanel] = useState(false); // 控制日志面板显示/隐藏
   const callTriggeredRef = useRef(false); // 使用ref立即标记，避免状态更新延迟
+  const zeroCountRef = useRef(0); // 连续检测到0的次数
 
   const addLog = (type, message, details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -99,35 +100,46 @@ const ChatAppNew = ({
         );
       }
 
-      // 只有在等待状态下且未触发过才能触发通话
-      if (
-        isInCall &&
-        callStatus === "waiting" &&
-        realDistance <= 1 &&
-        !callTriggeredRef.current
-      ) {
-        console.log(
-          "🎯 Triggering call - Status:",
-          callStatus,
-          "Distance:",
-          realDistance
-        );
+      // 连续5次检测到0才触发通话，避免异常值
+      if (isInCall && callStatus === "waiting" && !callTriggeredRef.current) {
+        if (realDistance <= 1) {
+          // 检测到0，增加计数
+          zeroCountRef.current += 1;
+          console.log(`📊 Zero detection count: ${zeroCountRef.current}/5`);
 
-        // 立即标记已触发，防止重复
-        callTriggeredRef.current = true;
+          if (zeroCountRef.current >= 5) {
+            console.log("🎯 Triggering call - 5 consecutive zeros detected");
 
-        if (callTimeout) {
-          clearTimeout(callTimeout);
-          setCallTimeout(null);
+            // 立即标记已触发，防止重复
+            callTriggeredRef.current = true;
+            zeroCountRef.current = 0; // 重置计数
+
+            if (callTimeout) {
+              clearTimeout(callTimeout);
+              setCallTimeout(null);
+            }
+
+            setCallStatus("dialing");
+            addLog(
+              "system",
+              "Call triggered by distance sensor",
+              "5 consecutive zeros detected"
+            );
+
+            setTimeout(() => {
+              console.log("📞 Setting call status to connected");
+              setCallStatus("connected");
+            }, 2000);
+          }
+        } else {
+          // 距离不为0，重置计数
+          if (zeroCountRef.current > 0) {
+            console.log(
+              `🔄 Resetting zero count (was ${zeroCountRef.current})`
+            );
+            zeroCountRef.current = 0;
+          }
         }
-
-        setCallStatus("dialing");
-        addLog("system", "Call triggered by distance sensor");
-
-        setTimeout(() => {
-          console.log("📞 Setting call status to connected");
-          setCallStatus("connected");
-        }, 2000);
       }
 
       // 记录距离变化（每10%变化记录一次，减少日志噪音）
@@ -182,6 +194,7 @@ const ChatAppNew = ({
     setIsInCall(true);
     setDistance(100); // 重置距离
     callTriggeredRef.current = false; // 重置触发标记
+    zeroCountRef.current = 0; // 重置0检测计数
 
     // 5秒超时自动退出
     const timeout = setTimeout(() => {
@@ -212,6 +225,7 @@ const ChatAppNew = ({
     setCallStatus("");
     setIsInCall(false);
     callTriggeredRef.current = false; // 重置触发标记
+    zeroCountRef.current = 0; // 重置0检测计数
 
     // 通话结束时关闭磁力
     if (magnetStrength > 0) {

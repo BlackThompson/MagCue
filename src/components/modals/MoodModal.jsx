@@ -7,26 +7,26 @@ const MoodModal = ({ isOpen, onClose, contactName, socialEnergy }) => {
   if (!isOpen) return null;
 
   const getMoodEmoji = (energy) => {
-    if (energy >= 4) return "😄";
-    if (energy >= 2) return "🙂";
+    if (energy >= 5) return "😄";
+    if (energy >= 3) return "🙂";
     if (energy >= 0) return "😐";
-    if (energy >= -2) return "😔";
+    if (energy >= -3) return "😔";
     return "😢";
   };
 
   const getMoodText = (energy) => {
-    if (energy >= 4) return "Very Happy";
-    if (energy >= 2) return "Happy";
+    if (energy >= 5) return "Very Happy";
+    if (energy >= 3) return "Happy";
     if (energy >= 0) return "Neutral";
-    if (energy >= -2) return "Sad";
+    if (energy >= -3) return "Sad";
     return "Very Sad";
   };
 
   const getMoodColor = (energy) => {
-    if (energy >= 4) return "text-green-500";
-    if (energy >= 2) return "text-blue-500";
+    if (energy >= 5) return "text-green-500";
+    if (energy >= 3) return "text-blue-500";
     if (energy >= 0) return "text-yellow-500";
-    if (energy >= -2) return "text-orange-500";
+    if (energy >= -3) return "text-orange-500";
     return "text-red-500";
   };
 
@@ -63,15 +63,6 @@ const MoodModal = ({ isOpen, onClose, contactName, socialEnergy }) => {
                 </div>
 
                 <h4 className="text-xl font-semibold mb-2">{contactName}</h4>
-                <p className={`text-lg ${getMoodColor(socialEnergy)}`}>
-                  {getMoodText(socialEnergy)}
-                </p>
-
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600">
-                    Social Energy Level: {socialEnergy}
-                  </p>
-                </div>
               </div>
             </CardContent>
           </Card>
