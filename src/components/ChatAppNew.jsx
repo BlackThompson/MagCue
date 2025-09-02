@@ -30,6 +30,7 @@ const ChatAppNew = ({
   const [callTimeout, setCallTimeout] = useState(null);
   const [arduinoConnected, setArduinoConnected] = useState(false);
   const [magnetStrength, setMagnetStrength] = useState(0);
+  const [showLogPanel, setShowLogPanel] = useState(false); // 控制日志面板显示/隐藏
   const callTriggeredRef = useRef(false); // 使用ref立即标记，避免状态更新延迟
 
   const addLog = (type, message, details = null) => {
@@ -340,6 +341,8 @@ const ChatAppNew = ({
         callStatus={callStatus}
         arduinoConnected={arduinoConnected}
         magnetStrength={magnetStrength}
+        showLogPanel={showLogPanel}
+        setShowLogPanel={setShowLogPanel}
       />
 
       {/* Call modal */}

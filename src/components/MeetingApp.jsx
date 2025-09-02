@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Sidebar from "./sidebar/Sidebar";
 import arduinoService from "../utils/arduinoService";
 
@@ -48,6 +49,7 @@ const MeetingApp = ({
   const [emojiOpacity, setEmojiOpacity] = useState(0.3);
   const [arduinoConnected, setArduinoConnected] = useState(false);
   const [magnetStrength, setMagnetStrength] = useState(0);
+  const [showLogPanel, setShowLogPanel] = useState(false); // 控制日志面板显示/隐藏
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
 
@@ -685,8 +687,25 @@ const MeetingApp = ({
         </div>
       </div>
 
+      {/* Toggle button for log panel */}
+      <button
+        onClick={() => setShowLogPanel(!showLogPanel)}
+        className={`fixed right-0 top-1/2 transform -translate-y-1/2 z-50 bg-gray-800/90 backdrop-blur-sm border border-gray-600 rounded-l-lg p-2 shadow-lg hover:bg-gray-700/90 transition-all duration-200`}
+        style={{ right: showLogPanel ? "320px" : "0px" }}
+      >
+        {showLogPanel ? (
+          <ChevronRight size={16} className="text-white" />
+        ) : (
+          <ChevronLeft size={16} className="text-white" />
+        )}
+      </button>
+
       {/* Right sidebar - System Log and Distance Control */}
-      <div className="w-80 bg-gradient-to-b from-gray-800/90 to-blue-900/90 border-l border-gray-700 flex flex-col relative z-50">
+      <div
+        className={`w-80 bg-gradient-to-b from-gray-800/90 to-blue-900/90 border-l border-gray-700 flex flex-col relative z-40 transition-transform duration-300 ease-in-out ${
+          showLogPanel ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         {/* Header */}
         <div className="p-6 border-b border-gray-700 bg-black/20 backdrop-blur-sm">
           <h2 className="text-xl font-semibold text-white">System Log</h2>
