@@ -106,6 +106,19 @@ const ChatAppNew = ({
         );
       }
 
+      // 如果正在通话且Arduino距离到达0%，开始通话
+      if (isInCall && callStatus === "waiting" && realDistance === 0) {
+        if (callTimeout) {
+          clearTimeout(callTimeout);
+          setCallTimeout(null);
+        }
+
+        setCallStatus("dialing");
+        setTimeout(() => {
+          setCallStatus("connected");
+        }, 2000);
+      }
+
       // 记录距离变化（每5%变化记录一次）
       const roundedDistance = Math.round(realDistance / 5) * 5;
       if (roundedDistance === 0) {
@@ -148,7 +161,7 @@ const ChatAppNew = ({
     setIsInCall(true);
     setDistance(100); // 重置距离
 
-    // 3秒超时自动退出
+    // 5秒超时自动退出
     const timeout = setTimeout(() => {
       if (distance > 0) {
         setCallStatus("timeout");
@@ -156,7 +169,7 @@ const ChatAppNew = ({
         setShowCallModal(false);
         // 不记录超时日志
       }
-    }, 3000);
+    }, 5000);
 
     setCallTimeout(timeout);
   };
@@ -205,7 +218,7 @@ const ChatAppNew = ({
         );
       }
 
-      // 如果正在通话且拉到0%，开始通话
+      // 如果正在通话且拉到0%，开始通话（语音通话和视频通话都一样处理）
       if (isInCall && callStatus === "waiting" && newDistance === 0) {
         if (callTimeout) {
           clearTimeout(callTimeout);
@@ -215,6 +228,7 @@ const ChatAppNew = ({
         setCallStatus("dialing");
         setTimeout(() => {
           setCallStatus("connected");
+          // 移除自动跳转到MeetingApp的逻辑
         }, 2000);
       }
 
@@ -227,20 +241,7 @@ const ChatAppNew = ({
     }
   };
 
-  // 当视频通话连接后，跳转到 MeetingApp
-  useEffect(() => {
-    if (callStatus === "connected" && callType === "video") {
-      if (callTimeout) {
-        clearTimeout(callTimeout);
-        setCallTimeout(null);
-      }
-      setShowCallModal(false);
-      setIsInCall(false);
-      if (onAppSwitch) {
-        onAppSwitch("meeting");
-      }
-    }
-  }, [callStatus, callType, onAppSwitch]);
+  // 移除自动跳转逻辑 - 语音通话和视频通话都保持在ChatApp中
 
   const selectedContact = contacts.find((c) => c.id === selectedChat);
 

@@ -123,7 +123,7 @@ const CallModal = ({
                   <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                     <p className="text-sm text-orange-700">
                       Pull the distance slider to 0% to start the call. You have
-                      3 seconds.
+                      5 seconds.
                     </p>
                   </div>
                 )}
@@ -146,8 +146,13 @@ const CallModal = ({
 
                 {callStatus === "connected" && (
                   <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">
-                      Call is connected. You can now talk with {contactName}.
+                    <p className="text-sm text-green-700 font-medium">
+                      📞 Call is connected with {contactName}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      {callType === "video"
+                        ? "Video call in progress"
+                        : "Voice call in progress"}
                     </p>
                   </div>
                 )}
@@ -161,9 +166,23 @@ const CallModal = ({
                 )}
 
                 <div className="mt-6 flex justify-center space-x-4">
-                  <Button onClick={onClose} variant="outline" className="px-6">
-                    End Call
-                  </Button>
+                  {callStatus === "connected" ? (
+                    <Button
+                      onClick={onClose}
+                      className="px-6 bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      <X size={16} className="mr-2" />
+                      Hang Up
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={onClose}
+                      variant="outline"
+                      className="px-6"
+                    >
+                      {callStatus === "timeout" ? "Close" : "Cancel"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
