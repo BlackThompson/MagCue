@@ -55,15 +55,6 @@ const ChatAppNew = ({
     return "Very Low";
   };
 
-  // 根据距离计算电磁铁强度 (1-5)
-  const calculateMagnetStrength = (distance) => {
-    if (distance >= 80) return 1; // 距离很远，弱磁力
-    if (distance >= 60) return 2;
-    if (distance >= 40) return 3;
-    if (distance >= 20) return 4;
-    return 5; // 距离很近，强磁力
-  };
-
   // Arduino集成
   useEffect(() => {
     console.log("🚀 ChatAppNew: Initializing Arduino connection...");
@@ -90,21 +81,9 @@ const ChatAppNew = ({
       addLog("system", `Arduino ${connected ? "connected" : "disconnected"}`);
     });
 
-    // 监听距离数据
+    // 监听距离数据 - 仅用于触发功能，不控制磁力
     const unsubscribeDistance = arduinoService.onDistance((realDistance) => {
       setDistance(realDistance);
-
-      // 计算并设置电磁铁强度
-      const newStrength = calculateMagnetStrength(realDistance);
-      if (newStrength !== magnetStrength) {
-        setMagnetStrength(newStrength);
-        arduinoService.setMagnetStrength(newStrength);
-        addLog(
-          "magnet",
-          `Magnet strength: Level ${newStrength}`,
-          `Distance: ${realDistance.toFixed(1)}% - Force: ${newStrength}`
-        );
-      }
 
       // 如果正在通话且Arduino距离到达0%，开始通话
       if (isInCall && callStatus === "waiting" && realDistance === 0) {
@@ -119,8 +98,8 @@ const ChatAppNew = ({
         }, 2000);
       }
 
-      // 记录距离变化（每5%变化记录一次）
-      const roundedDistance = Math.round(realDistance / 5) * 5;
+      // 记录距离变化（每10%变化记录一次，减少日志噪音）
+      const roundedDistance = Math.round(realDistance / 10) * 10;
       if (roundedDistance === 0) {
         addLog("system", "Distance at 0% - Ready for action");
       } else if (roundedDistance === 100) {
@@ -148,11 +127,21 @@ const ChatAppNew = ({
     const contact = contacts.find((c) => c.id === selectedChat);
     const statusLevel = getStatusLevel(contact.status);
 
-    // 只记录状态等级信息
+    // 根据联系人状态设置磁力强度
+    const magnetLevel = Math.abs(statusLevel); // 1-5的磁力等级
+    setMagnetStrength(magnetLevel);
+    arduinoService.setMagnetStrength(magnetLevel);
+
+    // 记录状态等级和磁力信息
     addLog(
       "system",
       `Status check for ${contact.name}`,
       `Level: ${statusLevel}`
+    );
+    addLog(
+      "magnet",
+      `Magnet set for call to ${contact.name}`,
+      `Status: ${contact.status} - Force: ${magnetLevel}`
     );
 
     setCallType(type);
@@ -167,7 +156,10 @@ const ChatAppNew = ({
         setCallStatus("timeout");
         setIsInCall(false);
         setShowCallModal(false);
-        // 不记录超时日志
+        // 超时时关闭磁力
+        setMagnetStrength(0);
+        arduinoService.setMagnetStrength(0);
+        addLog("magnet", "Magnet turned off", "Call timeout");
       }
     }, 5000);
 
@@ -182,17 +174,37 @@ const ChatAppNew = ({
     setShowCallModal(false);
     setCallStatus("");
     setIsInCall(false);
+
+    // 通话结束时关闭磁力
+    if (magnetStrength > 0) {
+      setMagnetStrength(0);
+      arduinoService.setMagnetStrength(0);
+      addLog("magnet", "Magnet turned off", "Call ended");
+    }
   };
 
   const handleMoodView = () => {
     const contact = contacts.find((c) => c.id === selectedChat);
     const energyLevel = getEnergyLevel(contact.socialEnergy);
 
-    // 只记录社交能量信息
+    // 根据社交能量设置磁力强度 (转换为1-5等级)
+    const magnetLevel = Math.max(
+      1,
+      Math.min(5, Math.abs(contact.socialEnergy) + 1)
+    );
+    setMagnetStrength(magnetLevel);
+    arduinoService.setMagnetStrength(magnetLevel);
+
+    // 记录社交能量和磁力信息
     addLog(
       "energy",
       `Social energy check for ${contact.name}`,
       `Energy: ${contact.socialEnergy}`
+    );
+    addLog(
+      "magnet",
+      `Magnet set for mood view of ${contact.name}`,
+      `Energy: ${contact.socialEnergy} - Force: ${magnetLevel}`
     );
 
     setShowMoodModal(true);
@@ -200,23 +212,19 @@ const ChatAppNew = ({
 
   const handleMoodClose = () => {
     setShowMoodModal(false);
+
+    // 心情窗口关闭时关闭磁力
+    if (magnetStrength > 0) {
+      setMagnetStrength(0);
+      arduinoService.setMagnetStrength(0);
+      addLog("magnet", "Magnet turned off", "Mood view closed");
+    }
   };
 
   const handleDistanceChange = (newDistance) => {
     // 保留手动距离控制作为备用（当Arduino未连接时）
     if (!arduinoConnected) {
       setDistance(newDistance);
-
-      // 计算并设置电磁铁强度
-      const newStrength = calculateMagnetStrength(newDistance);
-      if (newStrength !== magnetStrength) {
-        setMagnetStrength(newStrength);
-        addLog(
-          "magnet",
-          `Manual magnet strength: Level ${newStrength}`,
-          `Distance: ${newDistance}% - Force: ${newStrength}`
-        );
-      }
 
       // 如果正在通话且拉到0%，开始通话（语音通话和视频通话都一样处理）
       if (isInCall && callStatus === "waiting" && newDistance === 0) {
@@ -228,11 +236,10 @@ const ChatAppNew = ({
         setCallStatus("dialing");
         setTimeout(() => {
           setCallStatus("connected");
-          // 移除自动跳转到MeetingApp的逻辑
         }, 2000);
       }
 
-      // 记录距离状态变化
+      // 记录距离状态变化（减少日志噪音）
       if (newDistance === 0) {
         addLog("system", "Manual distance at 0% - Ready");
       } else if (newDistance === 100) {
