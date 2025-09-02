@@ -31,10 +31,10 @@ const LogPanel = ({
   };
 
   const getEnergyLevel = (energy) => {
-    if (energy >= 4) return "Very High";
-    if (energy >= 2) return "High";
-    if (energy >= 0) return "Normal";
-    if (energy >= -2) return "Low";
+    if (energy >= 5) return "Very High";
+    if (energy >= 3) return "High";
+    if (energy >= 0) return "Neutral";
+    if (energy >= -3) return "Low";
     return "Very Low";
   };
 

@@ -1,5 +1,46 @@
 // Initial contact data with status and energy
+// 按社交能量从高到低排列：Very High → Very Low
 export const initialContacts = [
+    // Very High (5) - 磁力等级5
+    {
+        id: "emma",
+        name: "Emma Wilson",
+        avatar: "👩‍🎨",
+        lastMessage: "The design looks amazing!",
+        time: "14:32",
+        unread: 0,
+        status: "available",
+        socialEnergy: 5,
+        messages: [
+            {
+                sender: "them",
+                text: "I just finished the new design",
+                time: "14:30",
+            },
+            { sender: "me", text: "Can you send me a preview?", time: "14:31" },
+            { sender: "them", text: "The design looks amazing!", time: "14:32" },
+        ],
+    },
+    {
+        id: "alex",
+        name: "Alex Thompson",
+        avatar: "👨‍🎤",
+        lastMessage: "Great performance tonight!",
+        time: "22:15",
+        unread: 0,
+        status: "sleeping",
+        socialEnergy: 5,
+        messages: [
+            {
+                sender: "them",
+                text: "How was the concert?",
+                time: "22:10",
+            },
+            { sender: "me", text: "It was incredible!", time: "22:12" },
+            { sender: "them", text: "Great performance tonight!", time: "22:15" },
+        ],
+    },
+    // High (3) - 磁力等级3
     {
         id: "sarah",
         name: "Sarah Johnson",
@@ -29,46 +70,7 @@ export const initialContacts = [
             { sender: "them", text: "How's your day going?", time: "13:25" },
         ],
     },
-    {
-        id: "mike",
-        name: "Mike Chen",
-        avatar: "👨‍💼",
-        lastMessage: "Can we meet tomorrow?",
-        time: "14:46",
-        unread: 3,
-        status: "busy",
-        socialEnergy: -4,
-        messages: [
-            {
-                sender: "them",
-                text: "Hi Mike! Are you free tomorrow?",
-                time: "14:40",
-            },
-            { sender: "me", text: "Let me check my schedule", time: "14:42" },
-            { sender: "them", text: "I have a project to discuss", time: "14:44" },
-            { sender: "me", text: "Sure, what time works for you?", time: "14:45" },
-            { sender: "them", text: "Can we meet tomorrow?", time: "14:46" },
-        ],
-    },
-    {
-        id: "emma",
-        name: "Emma Wilson",
-        avatar: "👩‍🎨",
-        lastMessage: "The design looks amazing!",
-        time: "14:32",
-        unread: 0,
-        status: "available",
-        socialEnergy: 5,
-        messages: [
-            {
-                sender: "them",
-                text: "I just finished the new design",
-                time: "14:30",
-            },
-            { sender: "me", text: "Can you send me a preview?", time: "14:31" },
-            { sender: "them", text: "The design looks amazing!", time: "14:32" },
-        ],
-    },
+    // Neutral (0) - 磁力等级1
     {
         id: "david",
         name: "David Brown",
@@ -84,6 +86,29 @@ export const initialContacts = [
             { sender: "them", text: "Thanks for the help! 😊", time: "12:24" },
         ],
     },
+    // Low (-3) - 磁力等级3
+    {
+        id: "mike",
+        name: "Mike Chen",
+        avatar: "👨‍💼",
+        lastMessage: "Can we meet tomorrow?",
+        time: "14:46",
+        unread: 3,
+        status: "busy",
+        socialEnergy: -3,
+        messages: [
+            {
+                sender: "them",
+                text: "Hi Mike! Are you free tomorrow?",
+                time: "14:40",
+            },
+            { sender: "me", text: "Let me check my schedule", time: "14:42" },
+            { sender: "them", text: "I have a project to discuss", time: "14:44" },
+            { sender: "me", text: "Sure, what time works for you?", time: "14:45" },
+            { sender: "them", text: "Can we meet tomorrow?", time: "14:46" },
+        ],
+    },
+    // Very Low (-5) - 磁力等级5
     {
         id: "lisa",
         name: "Lisa Anderson",
@@ -103,25 +128,7 @@ export const initialContacts = [
             { sender: "them", text: "The meeting is at 3 PM", time: "11:53" },
         ],
     },
-    {
-        id: "alex",
-        name: "Alex Thompson",
-        avatar: "👨‍🎤",
-        lastMessage: "Great performance tonight!",
-        time: "22:15",
-        unread: 0,
-        status: "sleeping",
-        socialEnergy: 4,
-        messages: [
-            {
-                sender: "them",
-                text: "How was the concert?",
-                time: "22:10",
-            },
-            { sender: "me", text: "It was incredible!", time: "22:12" },
-            { sender: "them", text: "Great performance tonight!", time: "22:15" },
-        ],
-    },
+    // Very Low (-5) - 磁力等级5
     {
         id: "sophia",
         name: "Sophia Rodriguez",
@@ -130,7 +137,7 @@ export const initialContacts = [
         time: "16:30",
         unread: 0,
         status: "offline",
-        socialEnergy: 1,
+        socialEnergy: -5,
         messages: [
             {
                 sender: "them",

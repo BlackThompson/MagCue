@@ -132,6 +132,12 @@ const ChatWindow = ({ selectedContact, contacts, onCall, onMoodView }) => {
         {/* Call buttons and mood view */}
         <div className="flex items-center space-x-3 mb-4">
           <button
+            onClick={onMoodView}
+            className="p-3 text-gray-600 hover:text-pink-500 hover:bg-pink-50 rounded-xl transition-all duration-200 hover:shadow-md"
+          >
+            <Heart size={18} />
+          </button>
+          <button
             onClick={() => onCall("voice")}
             className="p-3 text-gray-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:shadow-md"
           >
@@ -142,12 +148,6 @@ const ChatWindow = ({ selectedContact, contacts, onCall, onMoodView }) => {
             className="p-3 text-gray-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:shadow-md"
           >
             <Video size={18} />
-          </button>
-          <button
-            onClick={onMoodView}
-            className="p-3 text-gray-600 hover:text-pink-500 hover:bg-pink-50 rounded-xl transition-all duration-200 hover:shadow-md"
-          >
-            <Heart size={18} />
           </button>
         </div>
 

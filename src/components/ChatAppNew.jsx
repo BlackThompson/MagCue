@@ -19,7 +19,7 @@ const ChatAppNew = ({
   onAppSwitch,
 }) => {
   const [isInCall, setIsInCall] = useState(false);
-  const [selectedChat, setSelectedChat] = useState("sarah");
+  const [selectedChat, setSelectedChat] = useState("emma");
   const [showCallModal, setShowCallModal] = useState(false);
   const [callType, setCallType] = useState("");
   const [callStatus, setCallStatus] = useState("");
@@ -49,10 +49,10 @@ const ChatAppNew = ({
   };
 
   const getEnergyLevel = (energy) => {
-    if (energy >= 4) return "Very High";
-    if (energy >= 2) return "High";
-    if (energy >= 0) return "Normal";
-    if (energy >= -2) return "Low";
+    if (energy >= 5) return "Very High";
+    if (energy >= 3) return "High";
+    if (energy >= 0) return "Neutral";
+    if (energy >= -3) return "Low";
     return "Very Low";
   };
 
@@ -224,11 +224,8 @@ const ChatAppNew = ({
     const contact = contacts.find((c) => c.id === selectedChat);
     const energyLevel = getEnergyLevel(contact.socialEnergy);
 
-    // 根据社交能量设置磁力强度 (转换为1-5等级)
-    const magnetLevel = Math.max(
-      1,
-      Math.min(5, Math.abs(contact.socialEnergy) + 1)
-    );
+    // 根据社交能量设置磁力强度 (使用绝对值，保持原来的映射关系)
+    const magnetLevel = Math.abs(contact.socialEnergy) || 1; // 绝对值作为磁力等级，0时默认为1
     setMagnetStrength(magnetLevel);
     arduinoService.setMagnetStrength(magnetLevel);
 

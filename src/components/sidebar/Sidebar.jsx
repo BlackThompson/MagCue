@@ -100,12 +100,26 @@ const Sidebar = ({
               type="range"
               min="-5"
               max="5"
+              step="1"
               value={socialEnergy}
-              onChange={(e) => setSocialEnergy(parseInt(e.target.value))}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                // 限制为指定的5档值
+                let adjustedValue;
+                if (value <= -4) adjustedValue = -5;
+                else if (value <= -1) adjustedValue = -3;
+                else if (value <= 1) adjustedValue = 0;
+                else if (value <= 4) adjustedValue = 3;
+                else adjustedValue = 5;
+                setSocialEnergy(adjustedValue);
+              }}
               className="w-full slider"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-2">
               <span>Very Low</span>
+              <span>Low</span>
+              <span>Neutral</span>
+              <span>High</span>
               <span>Very High</span>
             </div>
           </div>
