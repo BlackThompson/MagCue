@@ -14,7 +14,7 @@ const MeetingApp = ({
   const [participants] = useState([
     {
       id: 1,
-      name: "John Smith",
+      name: "Co-located Participants",
       avatar: "👨‍💼",
       isSpeaking: true,
       video: "/videos/meeting/participant1.mp4",
@@ -651,9 +651,7 @@ const MeetingApp = ({
               <div className="absolute bottom-2 left-2 right-2">
                 <div className="bg-black/50 backdrop-blur-sm rounded p-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-white font-medium text-sm">
-                      You (Me)
-                    </span>
+                    <span className="text-white font-medium text-sm">You</span>
                     <div className="flex items-center space-x-2">
                       {isCameraOn && (
                         <span className="text-blue-400 text-xs">📹</span>
