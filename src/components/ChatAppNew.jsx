@@ -196,7 +196,7 @@ const ChatAppNew = ({
     callTriggeredRef.current = false; // 重置触发标记
     zeroCountRef.current = 0; // 重置0检测计数
 
-    // 5秒超时自动退出
+    // 8秒超时自动退出
     const timeout = setTimeout(() => {
       // 只有在还是等待状态时才执行超时逻辑
       setCallStatus((currentStatus) => {
@@ -211,7 +211,7 @@ const ChatAppNew = ({
         }
         return currentStatus; // 如果不是waiting状态，保持当前状态
       });
-    }, 5000);
+    }, 8000);
 
     setCallTimeout(timeout);
   };

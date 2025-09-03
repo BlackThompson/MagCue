@@ -54,6 +54,7 @@ const MeetingApp = ({
   const [canSpeak, setCanSpeak] = useState(false); // 是否适合发言
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
+  const participant1VideoRef = useRef(null); // 第一个参与者视频的引用
 
   // 可用的emoji回应
   const availableReactions = [
@@ -166,6 +167,7 @@ const MeetingApp = ({
     isSpeaking,
     activeEmoji,
     currentResistance,
+    canSpeak,
   ]);
 
   // 启动用户摄像头
@@ -182,33 +184,59 @@ const MeetingApp = ({
     }
   }, [isCameraOn]);
 
-  // 监测对话功能 - 新的10秒切换逻辑
+  // 监测对话功能 - 基于视频播放时间的动态控制
   useEffect(() => {
-    if (isMonitoring && monitoringStartTime) {
-      // 设置初始磁力Level 5
-      setMagnetStrength(5);
-      arduinoService.setMagnetStrength(5);
-      setCanSpeak(false);
+    let intervalId;
+
+    if (isMonitoring && participant1VideoRef.current) {
+      // 设置初始状态
       addLog(
         "monitor",
-        "Monitoring started - Not suitable to speak",
-        "Force: 5 (Strong)"
+        "Monitoring started - Syncing with participant video",
+        "Video-based control activated"
       );
 
-      // 27秒后切换到Level 3
-      const switchTimer = setTimeout(() => {
-        setMagnetStrength(3);
-        arduinoService.setMagnetStrength(3);
-        setCanSpeak(true);
-        addLog("monitor", "Good to speak", "Force: 3 (Medium)");
-      }, 27000);
+      // 定期检查视频播放时间并调整磁力等级
+      intervalId = setInterval(() => {
+        const video = participant1VideoRef.current;
+        if (video && !video.paused) {
+          const currentTime = video.currentTime;
+          const videoDuration = video.duration || 54; // 假设视频长度为54秒，可以根据实际调整
 
-      return () => {
-        clearTimeout(switchTimer);
-      };
+          // 计算在当前循环中的时间位置
+          const timeInCycle = currentTime % videoDuration;
+
+          // 根据视频时间决定磁力等级
+          if (timeInCycle <= 27) {
+            // 0-27秒: Level 5 (不适合发言)
+            if (magnetStrength !== 5 || canSpeak) {
+              setMagnetStrength(5);
+              arduinoService.setMagnetStrength(5);
+              setCanSpeak(false);
+              addLog(
+                "monitor",
+                "Video 0-27s: Not suitable to speak",
+                `Video time: ${timeInCycle.toFixed(1)}s - Force: 5 (Strong)`
+              );
+            }
+          } else {
+            // 27秒后: Level 3 (适合发言)
+            if (magnetStrength !== 3 || !canSpeak) {
+              setMagnetStrength(3);
+              arduinoService.setMagnetStrength(3);
+              setCanSpeak(true);
+              addLog(
+                "monitor",
+                "Video 27s+: Good to speak",
+                `Video time: ${timeInCycle.toFixed(1)}s - Force: 3 (Medium)`
+              );
+            }
+          }
+        }
+      }, 100); // 每100ms检查一次，确保及时响应
     } else if (!isMonitoring) {
-      // 停止监测时关闭磁力
-      if (magnetStrength > 0) {
+      // 停止监测时关闭磁力，但不影响emoji模式
+      if (magnetStrength > 0 && !activeEmoji) {
         setMagnetStrength(0);
         arduinoService.setMagnetStrength(0);
         addLog("magnet", "Monitoring stopped", "Magnet turned off");
@@ -216,7 +244,13 @@ const MeetingApp = ({
       setCanSpeak(false);
       setMonitoringStartTime(null);
     }
-  }, [isMonitoring, monitoringStartTime]);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isMonitoring, magnetStrength, canSpeak, activeEmoji]);
 
   // 距离变化处理
   const handleDistanceChange = (newDistance) => {
@@ -313,12 +347,15 @@ const MeetingApp = ({
     if (!isMonitoring) {
       // 开始监测
       setIsMonitoring(true);
-      setMonitoringStartTime(Date.now());
       setCurrentResistance(0);
       setDistance(100);
       setIsSpeaking(false);
       setIsMicOn(false); // 初始状态为静音
-      addLog("system", "Conversation monitoring started", "10s timer begins");
+      addLog(
+        "system",
+        "Conversation monitoring started",
+        "Video-sync control activated"
+      );
     } else {
       // 停止监测
       setIsMonitoring(false);
@@ -351,8 +388,8 @@ const MeetingApp = ({
 
     setReactions([newReaction]);
     setActiveEmoji(newReaction);
-    setEmojiOpacity(0.3);
-    setDistance(100);
+    setEmojiOpacity(0.5); // 设置初始透明度为中等
+    setDistance(50); // 设置初始距离为中等，对应透明度约0.5
     setShowReactions(false);
 
     // 设置emoji模式的固定Level 5磁力
@@ -364,7 +401,7 @@ const MeetingApp = ({
       `Emoji: ${reaction.emoji} - Force: 5`
     );
 
-    // 5秒后移除回应和关闭磁力
+    // 8秒后移除回应和关闭磁力
     setTimeout(() => {
       setReactions([]);
       setActiveEmoji(null);
@@ -374,7 +411,7 @@ const MeetingApp = ({
       setMagnetStrength(0);
       arduinoService.setMagnetStrength(0);
       addLog("magnet", "Emoji reaction ended", "Magnet turned off");
-    }, 5000);
+    }, 8000);
   };
 
   // 模拟其他参与者的回应
@@ -406,7 +443,7 @@ const MeetingApp = ({
 
         setTimeout(() => {
           setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-        }, 5000);
+        }, 8000);
       }
     }, 5000);
 
@@ -464,6 +501,7 @@ const MeetingApp = ({
             {/* Participant 1 - Top Left */}
             <div className="relative bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg overflow-hidden border-2 border-green-400">
               <video
+                ref={participant1VideoRef}
                 className="w-full h-full object-cover"
                 autoPlay
                 loop
@@ -1084,6 +1122,16 @@ const MeetingApp = ({
                   ? "Emoji active (Level 5)"
                   : "Idle"}
               </span>
+              {isMonitoring && participant1VideoRef.current && (
+                <div className="text-xs text-gray-400 mt-1">
+                  Video sync:{" "}
+                  {(
+                    (participant1VideoRef.current.currentTime || 0) %
+                    (participant1VideoRef.current.duration || 54)
+                  ).toFixed(1)}
+                  s
+                </div>
+              )}
             </div>
             {isMonitoring && (
               <p className="text-sm mt-2">

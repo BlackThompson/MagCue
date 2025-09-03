@@ -115,7 +115,7 @@ const CallModal = ({
                   <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                     <p className="text-sm text-orange-700">
                       Pull the distance slider to 0% to start the call. You have
-                      5 seconds.
+                      8 seconds.
                     </p>
                   </div>
                 )}
