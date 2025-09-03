@@ -13,7 +13,7 @@ const unsigned long SAMPLE_INTERVAL_MS = 200; // sensor sample interval
 unsigned long lastSampleMs = 0;
 
 // ---- Magnet safety timer ----
-const unsigned long MAX_ON_TIME_MS = 20000; // 20 seconds
+const unsigned long MAX_ON_TIME_MS = 60000; // 20 seconds
 bool magnetOn = false;
 unsigned long magnetStartMs = 0;
 

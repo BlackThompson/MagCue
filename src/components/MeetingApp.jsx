@@ -119,7 +119,7 @@ const MeetingApp = ({
             );
           }
           // 处理emoji透明度
-          const opacity = 0.3 + ((100 - realDistance) / 100) * 0.7;
+          const opacity = 0.1 + ((100 - realDistance) / 100) * 0.9;
           setEmojiOpacity(opacity);
         }
         // 监测模式时不改变磁力，只处理麦克风状态
@@ -195,13 +195,13 @@ const MeetingApp = ({
         "Force: 5 (Strong)"
       );
 
-      // 10秒后切换到Level 3
+      // 27秒后切换到Level 3
       const switchTimer = setTimeout(() => {
         setMagnetStrength(3);
         arduinoService.setMagnetStrength(3);
         setCanSpeak(true);
         addLog("monitor", "Good to speak", "Force: 3 (Medium)");
-      }, 10000);
+      }, 27000);
 
       return () => {
         clearTimeout(switchTimer);
@@ -237,7 +237,7 @@ const MeetingApp = ({
             );
           }
           // 处理emoji透明度
-          const opacity = 0.3 + ((100 - newDistance) / 100) * 0.7;
+          const opacity = 0.1 + ((100 - newDistance) / 100) * 0.9;
           setEmojiOpacity(opacity);
         }
         // 监测模式时不改变磁力，只处理麦克风
