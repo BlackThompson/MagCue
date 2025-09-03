@@ -1,4 +1,4 @@
-1// ---- CONFIG ----
+// ---- CONFIG ----
 #define IR_PIN A0                // IR distance sensor pin
 #define ELECTROMAGNET_1 10       // PWM
 #define ELECTROMAGNET_2 11       // PWM
@@ -9,7 +9,7 @@ int strengthLevels[5] = {53, 125, 197, 228, 255};
 
 // ---- Sampling ----
 // const unsigned long SAMPLE_INTERVAL_MS = 100; // sensor sample interval
-const unsigned long SAMPLE_INTERVAL_MS = 1000; // sensor sample interval
+const unsigned long SAMPLE_INTERVAL_MS = 200; // sensor sample interval
 unsigned long lastSampleMs = 0;
 
 // ---- Magnet safety timer ----
