@@ -55,6 +55,7 @@ const MeetingApp = ({
   const videoRef = useRef(null);
   const reactionsRef = useRef(null);
   const participant1VideoRef = useRef(null); // 第一个参与者视频的引用
+  const emojiTimeoutRef = useRef(null); // emoji清除定时器的引用
 
   // 可用的emoji回应
   const availableReactions = [
@@ -374,6 +375,13 @@ const MeetingApp = ({
       addLog("system", "Monitoring stopped for emoji reaction");
     }
 
+    // 清除之前的emoji定时器（如果存在）
+    if (emojiTimeoutRef.current) {
+      clearTimeout(emojiTimeoutRef.current);
+      emojiTimeoutRef.current = null;
+      addLog("system", "Previous emoji timer cleared", "Starting new emoji");
+    }
+
     // 清除之前的emoji
     setReactions([]);
 
@@ -402,7 +410,7 @@ const MeetingApp = ({
     );
 
     // 8秒后移除回应和关闭磁力
-    setTimeout(() => {
+    emojiTimeoutRef.current = setTimeout(() => {
       setReactions([]);
       setActiveEmoji(null);
       setEmojiOpacity(0.3);
@@ -411,6 +419,7 @@ const MeetingApp = ({
       setMagnetStrength(0);
       arduinoService.setMagnetStrength(0);
       addLog("magnet", "Emoji reaction ended", "Magnet turned off");
+      emojiTimeoutRef.current = null; // 清除引用
     }, 8000);
   };
 
@@ -469,6 +478,15 @@ const MeetingApp = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showReactions]);
+
+  // 组件卸载时清理emoji定时器
+  useEffect(() => {
+    return () => {
+      if (emojiTimeoutRef.current) {
+        clearTimeout(emojiTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 to-blue-900">
